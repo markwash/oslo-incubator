@@ -17,11 +17,13 @@
 #    under the License.
 
 import urlparse
+import uuid
 
 from oslo.config import cfg
 from stevedore import driver
 
 from openstack.common.messaging import drivers
+from openstack.common.messaging import target as msg_target
 
 _transport_opts = [
     cfg.StrOpt('transport_url',
@@ -53,12 +55,21 @@ class Transport(object):
         self._driver = driver
 
     def send(self, target, message, wait_for_reply=None, timeout=None):
-        return self._driver._send(target, message,
-                                  wait_for_reply=wait_for_reply,
-                                  timeout=timeout)
+        if wait_for_reply:
+            self._driver.send(target, message)
+        else:
+            return self._send_with_reply(target, message, timeout)
+
+    def _send_with_reply(self, target, message, timeout=None):
+        reply_target = msg_target.Target(topic=uuid.uuid4().hex())
+        reply_listener = self._driver.listener(reply_target)
+        self._driver.send(target, message, reply_target)
+        target, message = reply_listener.poll(timeout)
+        reply_listener.done(message)
+        return message
 
     def listen(self, target):
-        return self._driver._listen(target)
+        return self._driver.listen(target)
 
 
 def get_transport(conf, url=None):

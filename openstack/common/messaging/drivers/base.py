@@ -25,7 +25,7 @@ class Listener(object):
         self.target = target
 
     @abc.abstractmethod
-    def poll(self):
+    def poll(self, timeout=None):
         # returns (target, message)
         # target includes the (exchange, topic, namespace, version) which the
         # message was sent to
@@ -47,11 +47,15 @@ class BaseDriver(object):
         self._default_exchange = _default_exchange
 
     @abc.abstractmethod
-    def _send(self, target, message, wait_for_reply=None, timeout=None):
-        """Send a message to the given target."""
+    def send(self, target, message, reply_target=None):
+        """Send a message to the given target.
+        
+        If set, reply_target indicates the target the peer should use to
+        continue the conversation.
+        """
         return None
 
     @abc.abstractmethod
-    def _listen(self, target):
+    def listen(self, target):
         """Construct a Listener for the given target."""
         return None
